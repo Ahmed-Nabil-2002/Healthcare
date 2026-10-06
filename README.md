@@ -524,9 +524,9 @@ Liquid Clustering benchmarks were measured by running representative analytical 
 
 | Fact Table | Rows | Before (s) | After (s) | Speedup |
 | --- | --- | --- | --- | --- |
-| `fact_observations` | 16,219,969 | — | — | **47.2%** |
-| `fact_medications` | 4,226,915 | — | — | **28.4%** |
-| `fact_encounters` | 3,183,531 | — | — | **17.5%** |
+| `fact_observations` | 16,219,969 | 1.621 | 0.857 | **47.2%** |
+| `fact_medications` | 4,226,915 | 1.092 | 0.782 | **28.4%** |
+| `fact_encounters` | 3,183,531 | 0.765 | 0.632 | **17.5%** |
 
 > Run `optimazion/01_liquid_clustering_benchmark` for full benchmark details.
 
