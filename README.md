@@ -97,9 +97,9 @@ A semantic layer of **5 Databricks Metric Views** powers both a **Databricks Gen
               ┌────────────────┼────────────────┐
               │                │                │
     ┌─────────▼────────┐  ┌───▼────────┐  ┌───▼──────────────┐
-    │  GENIE AI        │  │ POWER BI    │  │  DQ MONITORING   │
-    │  Data Room       │  │  Dashboard  │  │  Quarantine Log  │
-    │  (NL Q&A)        │  │  (5 Pages)  │  │  fact_dq_quar_log │
+    │  GENIE AI        │  │ Dashboard    │  │  DQ MONITORING   │
+    │  Data Room       │  │ (5 Pages)  │  │  Quarantine Log  │
+    │  (NL Q&A)        │  │            │  │  fact_dq_quar_log │
     └──────────────────┘  └────────────┘  └──────────────────┘
 ```
 
@@ -117,7 +117,7 @@ A semantic layer of **5 Databricks Metric Views** powers both a **Databricks Gen
 | **Data Modeling** | Kimball Star Schema | Dimensional modeling with surrogate keys & SCD2 |
 | **Catalog** | Unity Catalog | Centralized governance, access control, metadata |
 | **AI / NL Q&A** | Databricks Genie AI | Natural language data exploration over metric views |
-| **BI Visualization** | Power BI | Executive dashboards & interactive analytics |
+| **BI Visualization** | Databricks Dashboard | Executive dashboards & interactive analytics |
 | **Optimization** | Liquid Clustering + Z-Ordering | Query acceleration on large fact tables |
 | **Data Quality** | DLT Expectations + Quarantine | Automated DQ enforcement with audit trail |
 | **Dataset** | Synthea 100K Patients | Synthetic clinical data (16 CSV tables) |
@@ -139,7 +139,7 @@ A semantic layer of **5 Databricks Metric Views** powers both a **Databricks Gen
 - **Quarantine Tracking:** Rejected records are counted and logged to `fact_dq_quarantine_log` — a governance fact table providing an auditable trail of every DQ violation per source table, per rule, per batch.
 - **Incremental Processing:** Auto Loader enables near-real-time ingestion of new CSV files as they arrive in cloud storage.
 
-### 3. Star Schema Data Modeling (Kimball)
+### 3. Galaxy Schema Data Modeling (Kimball)
 
 - **9 Dimension Tables:** Including `dim_patient` with **SCD Type 2** (preserving all historical patient profile versions via `__START_AT` / `__END_AT` / `is_current` columns), conformed dimensions (`dim_payer`, `dim_reason`, `dim_date`), and a snowflake relationship (`dim_provider` → `dim_organization`).
 - **6 Fact Tables:** Anchored by `fact_encounters` (3.1M rows) as the central hub. Child facts (`fact_observations` at 16.2M rows, `fact_conditions`, `fact_medications`, `fact_procedures`) connect back via the `encounter_id` degenerate dimension.
@@ -164,13 +164,13 @@ A semantic layer of **5 Databricks Metric Views** powers both a **Databricks Gen
 
 ---
 
-## Data Model (Star Schema)
+## Data Model (Galaxy Schema)
 
 <div align="center">
 
 <img src="docs/healthcare_data_model.png" alt="Healthcare Star Schema Data Model" width="1000">
 
-*Kimball Star Schema — 11 Dimensions + 7 Facts anchored by `fact_encounters`*
+*Kimball Galaxy Schema — 11 Dimensions + 7 Facts anchored by `fact_encounters`*
 
 </div>
 
@@ -352,9 +352,9 @@ Databricks Genie AI is configured as a **Genie data room** over the 5 Metric Vie
 
 ---
 
-## Dashboards & Analytics (Power BI)
+## Dashboards & Analytics (Databricks)
 
-The Power BI dashboard delivers 5 pages of interactive clinical, operational, and financial analytics:
+The dashboard delivers 5 pages of interactive clinical, operational, and financial analytics:
 
 | Dashboard Page | Focus Area | Key Visuals |
 | --- | --- | --- |
@@ -480,82 +480,7 @@ covid19_databricks_project/
 
 ---
 
-## Setup & Installation
 
-### Prerequisites
-
-- **Databricks Workspace** on AWS (with Unity Catalog enabled)
-- **Serverless Compute** or a Databricks cluster with **DBR 15.4+**
-- **Unity Catalog** with `CREATE CATALOG` and `CREATE SCHEMA` privileges
-- **Synthea 100K dataset** CSV files placed in cloud storage (S3 bucket or DBFS volume)
-
-### Step 1: Initialize Catalog & Schemas
-
-Run the `00_setup/create_catalog_schemas` notebook to create the Unity Catalog objects:
-
-```sql
--- Creates:
---   Catalog:  covid19_lakehouse
---   Schemas: bronze, silver, gold, quarantine
-```
-
-### Step 2: Load Source Data
-
-Place the 16 Synthea CSV files in your S3 storage path and configure the Auto Loader source location in the Bronze notebook:
-
-```python
-# In 01_bronze_autoloader_dlt — update the source path:
-source_path = "s3://your-bucket/synthea_100k/csv/"
-```
-
-### Step 3: Run the Bronze Layer
-
-Create a **Lakeflow Spark Declarative Pipeline (SDP)** and add the Bronze notebook:
-
-1. Navigate to **Databricks → Pipelines → Create Pipeline**
-2. Set the pipeline to **Serverless** or attach a cluster
-3. Add the notebook: `covid19_medallion_pipeline/bronze/01_bronze_autoloader_dlt`
-4. Click **Start** to begin incremental ingestion
-
-### Step 4: Add Silver & Gold Notebooks
-
-Add all 16 Silver notebooks and 18 Gold notebooks to the same SDP pipeline (or separate pipelines per layer). DLT automatically resolves dependencies between layers based on table references.
-
-### Step 5: Apply Performance Optimizations
-
-After the Gold tables are materialized, run the optimization notebook:
-
-```python
-# optimazion/01_liquid_clustering_benchmark
-# Applies Liquid Clustering to fact_observations, fact_medications, fact_encounters
-# and runs before/after benchmarks
-```
-
-### Step 6: Add Column Comments (Semantic Layer)
-
-Run the `analytics/02_column_comments_notebook` to attach business-level comments to all 135 columns across 18 Gold tables. These comments power Genie AI query accuracy.
-
-### Step 7: Configure Genie AI Data Room
-
-1. Navigate to **Databricks → Genie → Create Data Room**
-2. Select the 5 Metric Views as the data source:
-   - `covid19_lakehouse.gold.fact_encounters_metric_view`
-   - `covid19_lakehouse.gold.fact_conditions_metric_view`
-   - `covid19_lakehouse.gold.fact_medications_metric_view`
-   - `covid19_lakehouse.gold.fact_observations_metric_view`
-   - `covid19_lakehouse.gold.fact_procedures_metric_view`
-3. Configure example queries for Genie training
-4. Publish and share with stakeholders
-
-### Step 8: Connect Power BI
-
-1. Open Power BI Desktop
-2. Connect using the **Databricks** connector
-3. Set the server URL to your Databricks SQL Warehouse endpoint
-4. Import the Metric Views and Dimension tables as needed
-5. Build the 5 dashboard pages (Clinical, Operational, Financial, Demographics, Governance)
-
----
 
 ## Delta Lake Physical Configuration
 
@@ -615,10 +540,9 @@ Liquid Clustering benchmarks were measured by running representative analytical 
 
 ---
 
-<div align="center">
 
-<sub>Built with Databricks · Delta Lake · PySpark · DLT · Genie AI</sub>
-<br>
-<sub>For questions or contributions, please open an issue or submit a pull request.</sub>
+## 👤 Author
 
+**Ahmed Nabil** — Data Engineer
+[LinkedIn](https://www.linkedin.com/in/ahmed-nabil33) · [GitHub](https://github.com/Ahmed-Nabil-2002)
 </div>
